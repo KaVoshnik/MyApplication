@@ -1,7 +1,10 @@
 package com.example.myapplication.ui
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -9,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,7 +45,14 @@ fun EnhancedNoteDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (note == null) "Добавить заметку" else "Редактировать заметку") },
+        title = { 
+            Text(
+                if (note == null) "Добавить заметку" else "Редактировать заметку",
+                style = MaterialTheme.typography.headlineSmall
+            ) 
+        },
+        shape = RoundedCornerShape(28.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
         text = {
             Column(
                 modifier = Modifier
@@ -116,11 +127,23 @@ fun EnhancedNoteDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     priorities.forEach { (label, value) ->
+                        val isSelected = selectedPriority == value
+                        val scale by animateFloatAsState(
+                            targetValue = if (isSelected) 1.05f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            ),
+                            label = "priorityScale"
+                        )
+                        
                         FilterChip(
-                            selected = selectedPriority == value,
+                            selected = isSelected,
                             onClick = { selectedPriority = value },
                             label = { Text(label) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .scale(scale),
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = when (value) {
                                     3 -> MaterialTheme.colorScheme.errorContainer

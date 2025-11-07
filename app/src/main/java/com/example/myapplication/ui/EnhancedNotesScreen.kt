@@ -1,5 +1,7 @@
 package com.example.myapplication.ui
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,8 +16,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -105,10 +112,18 @@ fun EnhancedNotesScreen(viewModel: NoteViewModel) {
             }
         },
         floatingActionButton = {
-            if (selectedTab != 2) {
+            AnimatedVisibility(
+                visible = selectedTab != 2,
+                enter = scaleIn(animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )) + fadeIn(),
+                exit = scaleOut() + fadeOut()
+            ) {
                 FloatingActionButton(
                     onClick = { showAddNoteDialog = true },
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Добавить заметку")
                 }
@@ -120,122 +135,228 @@ fun EnhancedNotesScreen(viewModel: NoteViewModel) {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (selectedTab) {
-                0, 1 -> {
-                    // Поиск
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        placeholder = { Text("Поиск заметок...") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Search, contentDescription = "Поиск")
-                        },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Очистить")
+            Crossfade(
+                targetState = selectedTab,
+                animationSpec = tween(300, easing = FastOutSlowInEasing),
+                modifier = Modifier.fillMaxSize()
+            ) { tab ->
+                when (tab) {
+                    0, 1 -> {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            // Поиск
+                            AnimatedVisibility(
+                                visible = tab == 0 || tab == 1,
+                                enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
+                                    initialOffsetY = { -it },
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
+                                ),
+                                exit = fadeOut(animationSpec = tween(200))
+                            ) {
+                                Column {
+                                    OutlinedTextField(
+                                        value = searchQuery,
+                                        onValueChange = { searchQuery = it },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        placeholder = { Text("Поиск заметок...") },
+                                        leadingIcon = {
+                                            Icon(Icons.Default.Search, contentDescription = "Поиск")
+                                        },
+                                        trailingIcon = {
+                                            AnimatedVisibility(
+                                                visible = searchQuery.isNotEmpty(),
+                                                enter = fadeIn() + scaleIn(),
+                                                exit = fadeOut() + scaleOut()
+                                            ) {
+                                                IconButton(onClick = { searchQuery = "" }) {
+                                                    Icon(Icons.Default.Clear, contentDescription = "Очистить")
+                                                }
+                                            }
+                                        },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                    
+                                    // Фильтр по категориям
+                                    AnimatedVisibility(
+                                        visible = categories.isNotEmpty(),
+                                        enter = fadeIn() + slideInHorizontally(),
+                                        exit = fadeOut()
+                                    ) {
+                                        LazyRow(
+                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            item {
+                                                FilterChip(
+                                                    selected = selectedCategory == null,
+                                                    onClick = { selectedCategory = null },
+                                                    label = { Text("Все") }
+                                                )
+                                            }
+                                            items(categories) { category ->
+                                                FilterChip(
+                                                    selected = selectedCategory == category,
+                                                    onClick = { 
+                                                        selectedCategory = if (selectedCategory == category) null else category
+                                                    },
+                                                    label = { Text(category) }
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        },
-                        singleLine = true
-                    )
-                    
-                    // Фильтр по категориям
-                    if (categories.isNotEmpty()) {
-                        LazyRow(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            item {
-                                FilterChip(
-                                    selected = selectedCategory == null,
-                                    onClick = { selectedCategory = null },
-                                    label = { Text("Все") }
-                                )
+                            
+                            // Список заметок
+                            AnimatedVisibility(
+                                visible = filteredNotes.isEmpty(),
+                                enter = fadeIn(),
+                                exit = fadeOut()
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Note,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(64.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        )
+                                        Text(
+                                            text = if (tab == 0) "Нет активных заметок" else "Нет выполненных заметок",
+                                            fontSize = 18.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                             }
-                            items(categories) { category ->
-                                FilterChip(
-                                    selected = selectedCategory == category,
-                                    onClick = { 
-                                        selectedCategory = if (selectedCategory == category) null else category
-                                    },
-                                    label = { Text(category) }
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    
-                    // Список заметок
-                    if (filteredNotes.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (selectedTab == 0) "Нет активных заметок" else "Нет выполненных заметок",
-                                fontSize = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(filteredNotes, key = { it.id }) { note ->
-                                EnhancedNoteCard(
-                                    note = note,
-                                    onEdit = { noteToEdit = note },
-                                    onDelete = { viewModel.deleteNote(note) },
-                                    onToggleComplete = { viewModel.toggleNoteCompletion(note) }
-                                )
+                            
+                            AnimatedVisibility(
+                                visible = filteredNotes.isNotEmpty(),
+                                enter = fadeIn(),
+                                exit = fadeOut()
+                            ) {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(
+                                        items = filteredNotes,
+                                        key = { it.id }
+                                    ) { note ->
+                                        AnimatedNoteCard(
+                                            note = note,
+                                            onEdit = { noteToEdit = note },
+                                            onDelete = { viewModel.deleteNote(note) },
+                                            onToggleComplete = { viewModel.toggleNoteCompletion(note) }
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
-                }
-                2 -> {
-                    StatisticsScreen(
-                        activeCount = activeCount,
-                        completedCount = completedCount,
-                        categories = categories,
-                        notes = activeNotes + completedNotes
-                    )
+                    2 -> {
+                        StatisticsScreen(
+                            activeCount = activeCount,
+                            completedCount = completedCount,
+                            categories = categories,
+                            notes = activeNotes + completedNotes
+                        )
+                    }
                 }
             }
         }
     }
 
-    if (showAddNoteDialog || noteToEdit != null) {
-        EnhancedNoteDialog(
-            note = noteToEdit,
-            onDismiss = { 
-                showAddNoteDialog = false
-                noteToEdit = null
-            },
-            onSave = { note ->
-                if (noteToEdit != null) {
-                    viewModel.updateNote(note)
-                    noteToEdit = null
-                } else {
-                    viewModel.insertNote(note)
-                }
-                showAddNoteDialog = false
-            }
+    AnimatedVisibility(
+        visible = showAddNoteDialog || noteToEdit != null,
+        enter = fadeIn(animationSpec = tween(300)) + scaleIn(
+            initialScale = 0.9f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        ),
+        exit = fadeOut(animationSpec = tween(200)) + scaleOut(
+            targetScale = 0.9f,
+            animationSpec = tween(200)
         )
+    ) {
+        if (showAddNoteDialog || noteToEdit != null) {
+            EnhancedNoteDialog(
+                note = noteToEdit,
+                onDismiss = { 
+                    showAddNoteDialog = false
+                    noteToEdit = null
+                },
+                onSave = { note ->
+                    if (noteToEdit != null) {
+                        viewModel.updateNote(note)
+                        noteToEdit = null
+                    } else {
+                        viewModel.insertNote(note)
+                    }
+                    showAddNoteDialog = false
+                }
+            )
+        }
     }
 }
 
 @Composable
-fun EnhancedNoteCard(
+fun AnimatedNoteCard(
     note: Note,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onToggleComplete: () -> Unit
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+    
+    val elevation by animateDpAsState(
+        targetValue = if (isPressed) 4.dp else 2.dp,
+        animationSpec = tween(150),
+        label = "elevation"
+    )
+    
+    EnhancedNoteCard(
+        note = note,
+        onEdit = onEdit,
+        onDelete = onDelete,
+        onToggleComplete = onToggleComplete,
+        scale = scale,
+        elevation = elevation,
+        onPressedChange = { isPressed = it }
+    )
+}
+
+@Composable
+private fun EnhancedNoteCard(
+    note: Note,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onToggleComplete: () -> Unit,
+    scale: Float,
+    elevation: androidx.compose.ui.unit.Dp,
+    onPressedChange: (Boolean) -> Unit
 ) {
     val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
     val dateTime = Date(note.scheduledDateTime)
@@ -253,17 +374,36 @@ fun EnhancedNoteCard(
         "Общее" to Color(0xFF78909C)
     )
     
+    val completedAlpha by animateFloatAsState(
+        targetValue = if (note.isCompleted) 0.6f else 1f,
+        animationSpec = tween(300),
+        label = "alpha"
+    )
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            .scale(scale)
+            .shadow(
+                elevation = elevation,
+                shape = RoundedCornerShape(20.dp),
+                clip = false
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                onPressedChange(true)
+                onEdit()
+            },
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (note.isCompleted) 
                 MaterialTheme.colorScheme.surfaceVariant 
             else 
                 MaterialTheme.colorScheme.surface
-        )
+        ),
+        shape = RoundedCornerShape(20.dp)
     ) {
         Column(
             modifier = Modifier
@@ -294,28 +434,46 @@ fun EnhancedNoteCard(
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (note.isCompleted) 
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = completedAlpha)
                             else 
-                                MaterialTheme.colorScheme.onSurface
+                                MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.alpha(completedAlpha)
                         )
-                        if (note.description.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = note.description,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 2
-                            )
+                        AnimatedVisibility(
+                            visible = note.description.isNotBlank(),
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            Column {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = note.description,
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = completedAlpha),
+                                    maxLines = 2,
+                                    modifier = Modifier.alpha(completedAlpha)
+                                )
+                            }
                         }
                     }
                 }
                 
                 Row {
+                    val completedIconScale by animateFloatAsState(
+                        targetValue = if (note.isCompleted) 1.2f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        label = "iconScale"
+                    )
+                    
                     IconButton(onClick = onToggleComplete) {
                         Icon(
                             if (note.isCompleted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                             contentDescription = if (note.isCompleted) "Не выполнено" else "Выполнено",
-                            tint = if (note.isCompleted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (note.isCompleted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.scale(completedIconScale)
                         )
                     }
                     IconButton(onClick = onDelete) {
