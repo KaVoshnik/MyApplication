@@ -13,7 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.myapplication.ui.NotesScreen
+import com.example.myapplication.ui.EnhancedNotesScreen
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.myapplication.viewmodel.NoteViewModel
 
@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
-                    NotesScreen(viewModel = viewModel)
+                    EnhancedNotesScreen(viewModel = viewModel)
                 }
             }
         }

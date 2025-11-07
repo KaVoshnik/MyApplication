@@ -2,7 +2,6 @@ package com.example.myapplication.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.Date
 
 @Entity(tableName = "notes")
 data class Note(
@@ -11,6 +10,10 @@ data class Note(
     val title: String,
     val description: String,
     val scheduledDateTime: Long, // Unix timestamp
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val category: String = "Общее", // Категория заметки
+    val priority: Int = 1, // 1 - низкий, 2 - средний, 3 - высокий
+    val isCompleted: Boolean = false, // Выполнена ли задача
+    val color: Int = 0 // Цвет заметки (ARGB)
 )
 
