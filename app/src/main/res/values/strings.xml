@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Заметки</string>
+    <string name="add_note">Добавить заметку</string>
+    <string name="title">Заголовок</string>
+    <string name="description">Описание</string>
+    <string name="select_date_time">Выберите дату и время</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="delete">Удалить</string>
+    <string name="no_notes">Нет заметок</string>
+    <string name="notes_for_today">Заметки на сегодня</string>
+</resources>
