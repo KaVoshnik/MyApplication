@@ -72,18 +72,40 @@ fun EnhancedNoteDialog(
                 )
                 
                 // Категория
-                Text("Категория", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                var expandedCategory by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = expandedCategory,
+                    onExpandedChange = { expandedCategory = !expandedCategory },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    categories.forEach { category ->
-                        FilterChip(
-                            selected = selectedCategory == category,
-                            onClick = { selectedCategory = category },
-                            label = { Text(category) },
-                            modifier = Modifier.weight(1f)
-                        )
+                    OutlinedTextField(
+                        value = selectedCategory,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("Категория") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Label, contentDescription = null)
+                        },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategory)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedCategory,
+                        onDismissRequest = { expandedCategory = false }
+                    ) {
+                        categories.forEach { category ->
+                            DropdownMenuItem(
+                                text = { Text(category) },
+                                onClick = {
+                                    selectedCategory = category
+                                    expandedCategory = false
+                                }
+                            )
+                        }
                     }
                 }
                 
